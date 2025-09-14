@@ -10,6 +10,8 @@ process.on("unhandledRejection", (reason) => {
 
 const app = express()
 const port = process.env.PORT || 3000
+const ip = process.env.IP || 'http://localhost'
+
 
 app.use(cors())
 // Adiciona o middleware para o parsing do JSON
@@ -17,6 +19,6 @@ app.use(express.json())
 app.use(routes)
 connectToDatabase()
 
-app.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`)
+app.listen(Number(port), ip, () => {
+  console.log(`Server running at ${ip}:${port}`)
 })
