@@ -1,0 +1,4 @@
+node_modules
+build
+source/config/_localVars.ts
+.env
