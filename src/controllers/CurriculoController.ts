@@ -1,3 +1,4 @@
+import axios from 'axios'
 import { Router, Response, Request } from 'express'
 import { ObjectId } from 'mongodb'
 import multer from 'multer'
@@ -20,6 +21,12 @@ CurriculoController.post('/upload', upload.single('file'), async (request: Reque
       status: 'pendente',
       createdAt: new Date(),
     })
+
+    try {
+      await axios.get(`${process.env.PROCESSING_SERVICE_URL}/health`)
+    } catch (err) {
+      console.error('Erro ao iniciar processamento do currículo:', err)
+    }
 
     return response.send_ok('Currículo salvo com sucesso', { id: result._id })
   } catch (err) {
