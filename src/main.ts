@@ -10,7 +10,7 @@ process.on("unhandledRejection", (reason) => {
 
 const app = express()
 const port = process.env.PORT || 3000
-const ip = process.env.IP || 'http://localhost'
+const ip = process.env.IP || '0.0.0.0'
 
 
 app.use(cors())
