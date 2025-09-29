@@ -10,6 +10,7 @@ const upload = multer() // guarda em memória
 // Upload do currículo
 CurriculoController.post('/upload', upload.single('file'), async (request: Request, response: Response) => {
   try {
+    console.log('Recebido upload de currículo')
     if (!request.file) {
       return response.status(400).json({ error: 'Nenhum arquivo enviado' })
     }
