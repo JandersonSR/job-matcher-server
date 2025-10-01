@@ -17,17 +17,18 @@ CurriculoController.post('/upload', upload.single('file'), async (request: Reque
 
     const conteudo = request.file.buffer.toString('utf-8') // Simples. Ideal seria extrair texto (Python ou serviço extra)
 
+
+    // try {
+    //   await axios.get(`${process.env.PROCESSING_SERVICE_URL}/health`)
+    // } catch (err) {
+    //   console.error('Erro ao iniciar processamento do currículo:', err)
+    // }
+
     const result = await CurriculoModel.create({
       conteudo,
       status: 'pendente',
       createdAt: new Date(),
     })
-
-    try {
-      await axios.get(`${process.env.PROCESSING_SERVICE_URL}/health`)
-    } catch (err) {
-      console.error('Erro ao iniciar processamento do currículo:', err)
-    }
 
     return response.send_ok('Currículo salvo com sucesso', { id: result._id })
   } catch (err) {
