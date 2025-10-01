@@ -2,6 +2,7 @@ import mongoose from "mongoose"
 
 
 const curriculoSchema = new mongoose.Schema({
+  conteudo: String,
   resultado: String,
   status: String
 }, { strict: false, timestamps: true })
