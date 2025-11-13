@@ -62,8 +62,9 @@ CurriculoController.get("/vagas", async (request: Request, response: Response) =
 
 CurriculoController.get("/status/:id", async (request: Request, response: Response) => {
   try {
-    console.log("Consultando status do currículo...")
     const id = request.params.id
+    console.log("Consultando status do currículo...", { id })
+
 
     setImmediate(() => {
       processarCurriculos()
