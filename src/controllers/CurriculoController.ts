@@ -66,9 +66,9 @@ CurriculoController.get("/status/:id", async (request: Request, response: Respon
     console.log("Consultando status do currículo...", { id })
 
 
-    setImmediate(() => {
-      processarCurriculos()
-    })
+    // setImmediate(() => {
+    //   processarCurriculos()
+    // })
 
     const curriculo = await CurriculoModel.findOne({ _id: new ObjectId(id) })
     if (!curriculo) return response.send_notFound("Currículo não encontrado")
