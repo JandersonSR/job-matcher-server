@@ -50,6 +50,8 @@ CurriculoController.get("/vagas", async (request: Request, response: Response) =
     const curriculo = await CurriculoModel.findOne({ email })
     if (!curriculo) return response.send_notFound("Currículo não encontrado.")
 
+    await processarCurriculos()
+
     return response.send_ok("Vagas recuperadas com sucesso", {
       resultado: curriculo.resultado || [],
     })
