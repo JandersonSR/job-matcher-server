@@ -25,13 +25,10 @@ CurriculoController.post("/upload", upload.single("file"), async (request: Reque
       createdAt: new Date()
     }, { upsert: true, new: true })
 
-    try {
-      // inicia scraping e processamento
-      await scrapVagas(2)
-      await processarCurriculos()
-    } catch (err) {
-      console.error("Erro ao iniciar scraping ou processamento:", err)
-    }
+    setImmediate(() => {
+      scrapVagas(2)
+      processarCurriculos()
+    })
 
     return response.send_ok("Currículo salvo com sucesso", { id: result._id })
   } catch (err) {
@@ -50,7 +47,9 @@ CurriculoController.get("/vagas", async (request: Request, response: Response) =
     const curriculo = await CurriculoModel.findOne({ email })
     if (!curriculo) return response.send_notFound("Currículo não encontrado.")
 
-    await processarCurriculos()
+    setImmediate(() => {
+      processarCurriculos()
+    })
 
     return response.send_ok("Vagas recuperadas com sucesso", {
       resultado: curriculo.resultado || [],
@@ -65,7 +64,10 @@ CurriculoController.get("/status/:id", async (request: Request, response: Respon
   try {
     console.log("Consultando status do currículo...")
     const id = request.params.id
-    await processarCurriculos()
+
+    setImmediate(() => {
+      processarCurriculos()
+    })
 
     const curriculo = await CurriculoModel.findOne({ _id: new ObjectId(id) })
     if (!curriculo) return response.send_notFound("Currículo não encontrado")
@@ -83,8 +85,10 @@ CurriculoController.get("/status/:id", async (request: Request, response: Respon
 CurriculoController.get("/processar-curriculos", async (request: Request, response: Response) => {
   try {
     console.log("Iniciando processamento manual de currículos...")
-    await scrapVagas(2)
-    await processarCurriculos()
+    setImmediate(() => {
+      scrapVagas(2)
+      processarCurriculos()
+    })
     return response.send_ok("Processamento iniciado com sucesso")
   } catch (err) {
     console.error(err)
@@ -93,14 +97,15 @@ CurriculoController.get("/processar-curriculos", async (request: Request, respon
 })
 
 export default CurriculoController
-// 🔹 Dispara o scraping sem aguardar a resposta
+
+// Dispara o scraping sem aguardar a resposta
 function scrapVagas(maxPages = 2) {
   console.log("Disparando scraping de vagas (modo assíncrono)...")
 
   axios
     .get(`${process.env.PROCESSING_SERVICE_URL}/scrap-vagas`, {
       params: { max_pages: maxPages },
-      timeout: 10000, // tempo curto apenas para conexão, não para execução
+      timeout: 0
     })
     .then(() => {
       console.log("[SCRAP VAGAS] ✅ Requisição enviada com sucesso (execução em background)")
@@ -113,13 +118,13 @@ function scrapVagas(maxPages = 2) {
     })
 }
 
-// 🔹 Dispara o processamento de currículos sem aguardar o resultado
+// Dispara o processamento de currículos sem aguardar o resultado
 function processarCurriculos() {
   console.log("Disparando processamento de currículos (modo assíncrono)...")
 
   axios
     .get(`${process.env.PROCESSING_SERVICE_URL}/processar-curriculos`, {
-      timeout: 10000,
+      timeout: 0,
     })
     .then(() => {
       console.log("[PROCESSAR CURRÍCULOS] ✅ Requisição enviada com sucesso (execução em background)")
