@@ -9,7 +9,7 @@ const upload = multer() // guarda em memória
 
 CurriculoController.post("/upload", upload.single("file"), async (request: Request, response: Response) => {
   try {
-    console.log("📥 Recebido upload de currículo")
+    console.log("Recebido upload de currículo")
 
     const email = request.body.email
     if (!email) return response.send_badRequest("E-mail é obrigatório.")
@@ -18,16 +18,20 @@ CurriculoController.post("/upload", upload.single("file"), async (request: Reque
     const conteudo = request.file.buffer.toString("utf-8")
 
     console.log("🔍 Salvando currículo no banco...")
-    const result = await CurriculoModel.create({
+    const result = await CurriculoModel.findOneAndUpdate({ email }, {
       email,
       conteudo,
       status: "pendente",
-      createdAt: new Date(),
-    })
+      createdAt: new Date()
+    }, { upsert: true, new: true })
 
-    // inicia scraping e processamento
-    await scrapVagas(2)
-    await processarCurriculos()
+    try {
+      // inicia scraping e processamento
+      await scrapVagas(2)
+      await processarCurriculos()
+    } catch (err) {
+      console.error("Erro ao iniciar scraping ou processamento:", err)
+    }
 
     return response.send_ok("Currículo salvo com sucesso", { id: result._id })
   } catch (err) {
@@ -36,36 +40,10 @@ CurriculoController.post("/upload", upload.single("file"), async (request: Reque
   }
 })
 
-CurriculoController.post("/atualizar", upload.single("file"), async (request: Request, response: Response) => {
-  try {
-    const email = request.body.email
-    if (!email) return response.send_badRequest("E-mail é obrigatório.")
-    if (!request.file) return response.send_badRequest("Nenhum arquivo enviado.")
-
-    const conteudo = request.file.buffer.toString("utf-8")
-
-    const existente = await CurriculoModel.findOne({ email })
-    if (!existente) {
-      return response.send_notFound("Nenhum currículo encontrado para este e-mail.")
-    }
-
-    await CurriculoModel.updateOne(
-      { email },
-      { $set: { conteudo, status: "pendente", updatedAt: new Date() } }
-    )
-
-    await scrapVagas(2)
-    await processarCurriculos()
-
-    return response.send_ok("Currículo atualizado com sucesso")
-  } catch (err) {
-    console.error(err)
-    return response.send_internalServerError("Erro ao atualizar currículo")
-  }
-})
-
 CurriculoController.get("/vagas", async (request: Request, response: Response) => {
   try {
+    console.log("Buscando vagas para o e-mail...")
+
     const email = request.query.email as string
     if (!email) return response.send_badRequest("E-mail é obrigatório.")
 
@@ -83,6 +61,7 @@ CurriculoController.get("/vagas", async (request: Request, response: Response) =
 
 CurriculoController.get("/status/:id", async (request: Request, response: Response) => {
   try {
+    console.log("Consultando status do currículo...")
     const id = request.params.id
     await processarCurriculos()
 
@@ -99,8 +78,9 @@ CurriculoController.get("/status/:id", async (request: Request, response: Respon
   }
 })
 
-CurriculoController.get("/start-process", async (request: Request, response: Response) => {
+CurriculoController.get("/processar-curriculos", async (request: Request, response: Response) => {
   try {
+    console.log("Iniciando processamento manual de currículos...")
     await scrapVagas(2)
     await processarCurriculos()
     return response.send_ok("Processamento iniciado com sucesso")
@@ -111,28 +91,41 @@ CurriculoController.get("/start-process", async (request: Request, response: Res
 })
 
 export default CurriculoController
+// 🔹 Dispara o scraping sem aguardar a resposta
+function scrapVagas(maxPages = 2) {
+  console.log("Disparando scraping de vagas (modo assíncrono)...")
 
-async function scrapVagas(maxPages = 2) {
-  try {
-    const response = await axios.get(`${process.env.PROCESSING_SERVICE_URL}/scrap-vagas`, {
+  axios
+    .get(`${process.env.PROCESSING_SERVICE_URL}/scrap-vagas`, {
       params: { max_pages: maxPages },
-      timeout: 30000,
+      timeout: 10000, // tempo curto apenas para conexão, não para execução
     })
-    console.log("[SCRAP VAGAS]", response.data)
-  } catch (error: any) {
-    console.error("[SCRAP VAGAS] Erro:", error.message)
-    if (error.response) console.error("Resposta do servidor:", error.response.data)
-  }
+    .then(() => {
+      console.log("[SCRAP VAGAS] ✅ Requisição enviada com sucesso (execução em background)")
+    })
+    .catch((error: any) => {
+      console.error("[SCRAP VAGAS] ⚠️ Falha ao disparar scraping:", error.message)
+      if (error.response) {
+        console.error("Resposta do servidor:", error.response.data)
+      }
+    })
 }
 
-async function processarCurriculos() {
-  try {
-    const response = await axios.get(`${process.env.PROCESSING_SERVICE_URL}/processar-curriculos`, {
-      timeout: 30000,
+// 🔹 Dispara o processamento de currículos sem aguardar o resultado
+function processarCurriculos() {
+  console.log("Disparando processamento de currículos (modo assíncrono)...")
+
+  axios
+    .get(`${process.env.PROCESSING_SERVICE_URL}/processar-curriculos`, {
+      timeout: 10000,
     })
-    console.log("[PROCESSAR CURRÍCULOS]", response.data)
-  } catch (error: any) {
-    console.error("[PROCESSAR CURRÍCULOS] Erro:", error.message)
-    if (error.response) console.error("Resposta do servidor:", error.response.data)
-  }
+    .then(() => {
+      console.log("[PROCESSAR CURRÍCULOS] ✅ Requisição enviada com sucesso (execução em background)")
+    })
+    .catch((error: any) => {
+      console.error("[PROCESSAR CURRÍCULOS] ⚠️ Falha ao disparar processamento:", error.message)
+      if (error.response) {
+        console.error("Resposta do servidor:", error.response.data)
+      }
+    })
 }
