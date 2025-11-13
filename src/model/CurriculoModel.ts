@@ -1,6 +1,5 @@
 import mongoose from "mongoose"
 
-
 const curriculoSchema = new mongoose.Schema({
   conteudo: String,
   resultado: String,
