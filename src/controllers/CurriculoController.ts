@@ -1,7 +1,8 @@
 import axios from "axios"
 import { Router, Response, Request } from "express"
-import { ObjectId } from "mongodb"
+import mammoth from "mammoth"
 import multer from "multer"
+
 import { CurriculoModel } from "../model/CurriculoModel"
 
 const CurriculoController = Router()
@@ -15,12 +16,33 @@ CurriculoController.post("/upload", upload.single("file"), async (request: Reque
     if (!email) return response.send_badRequest("E-mail é obrigatório.")
     if (!request.file) return response.send_badRequest("Nenhum arquivo enviado.")
 
-    const conteudo = request.file.buffer.toString("utf-8")
+    const buffer = request.file.buffer
+    const filename = request.file.originalname.toLowerCase()
 
-    console.log("🔍 Salvando currículo no banco...")
+     let texto = ""
+
+    if (filename.endsWith(".docx")) {
+      const result = await mammoth.extractRawText({ buffer })
+      texto = result.value
+    }
+
+    if (filename.endsWith(".txt")) {
+      texto = buffer.toString("utf8")
+    }
+
+
+    if (filename.endsWith(".pdf")) {
+      const pdfParse = require("pdf-parse/lib/pdf-parse.js")
+      const data = await pdfParse(buffer)
+      texto = data.text
+    }
+
+    if (!texto) return response.send_badRequest("Formato não suportado. Envie .docx ou .txt")
+
+    console.log("Salvando currículo no banco...")
     const result = await CurriculoModel.findOneAndUpdate({ email }, {
       email,
-      conteudo,
+      conteudo: texto,
       status: "pendente",
       createdAt: new Date()
     }, { upsert: true, new: true })
@@ -33,7 +55,7 @@ CurriculoController.post("/upload", upload.single("file"), async (request: Reque
     return response.send_ok("Currículo salvo com sucesso", { id: result._id })
   } catch (err) {
     console.error(err)
-    return response.send_internalServerError("Erro ao salvar currículo")
+    return response.send_badRequest("Erro ao salvar currículo", { err })
   }
 })
 
@@ -47,6 +69,7 @@ CurriculoController.get("/vagas", async (request: Request, response: Response) =
     const curriculo = await CurriculoModel.findOne({ email })
     if (!curriculo) return response.send_notFound("Currículo não encontrado.")
 
+      console.log("Currículo encontrado. Disparando processamento de currículos...", { email, curriculo })
     setImmediate(() => {
       processarCurriculos()
     })
@@ -56,21 +79,21 @@ CurriculoController.get("/vagas", async (request: Request, response: Response) =
     })
   } catch (err) {
     console.error(err)
-    return response.send_internalServerError("Erro ao buscar vagas.")
+    return response.send_badRequest("Erro ao buscar vagas.")
   }
 })
 
-CurriculoController.get("/status/:id", async (request: Request, response: Response) => {
+CurriculoController.get("/status/:email", async (request: Request, response: Response) => {
   try {
-    const id = request.params.id
-    console.log("Consultando status do currículo...", { id })
+    const email = request.params.email
+    console.log("Consultando status do currículo...", { email })
 
 
     // setImmediate(() => {
     //   processarCurriculos()
     // })
 
-    const curriculo = await CurriculoModel.findOne({ _id: new ObjectId(id) })
+    const curriculo = await CurriculoModel.findOne({ email })
     if (!curriculo) return response.send_notFound("Currículo não encontrado")
 
     return response.send_ok("Currículo encontrado", {
@@ -79,7 +102,7 @@ CurriculoController.get("/status/:id", async (request: Request, response: Respon
     })
   } catch (err) {
     console.error(err)
-    return response.send_internalServerError("Erro ao consultar status")
+    return response.send_badRequest("Erro ao consultar status")
   }
 })
 
@@ -90,12 +113,65 @@ CurriculoController.get("/processar-curriculos", async (request: Request, respon
       scrapVagas(2)
       processarCurriculos()
     })
-    return response.send_ok("Processamento iniciado com sucesso")
+
+    const email = request.params.email
+    console.log("Consultando status do currículo...", { email })
+
+    const curriculo = await CurriculoModel.findOne({ email })
+    if (!curriculo) return response.send_notFound("Currículo não encontrado")
+
+    return response.send_ok("vagas encontradas com sucesso", {
+      status: curriculo.status,
+      resultado: curriculo.resultado || [],
+    })
   } catch (err) {
     console.error(err)
-    return response.send_internalServerError("Erro ao iniciar processamento", { err })
+    return response.send_badRequest("Erro ao iniciar processamento", { err })
   }
 })
+
+CurriculoController.get("/comparar/embeddings", async (request: Request, response: Response) => {
+  try {
+    // Dispara o processamento de currículos sem aguardar o resultado
+  const resultado = await axios.get(`${process.env.PROCESSING_SERVICE_URL}/comparar/embeddings?email=${request.query.email}`, {
+    timeout: 28000
+  })
+
+    return response.send_ok("Comparado com embedding com sucesso", { resultado: resultado.data?.detalhe })
+  } catch (err) {
+    console.error(err)
+    return response.send_badRequest("Erro ao iniciar processamento", { err })
+  }
+})
+
+CurriculoController.get("/comparar/llm", async (request: Request, response: Response) => {
+  try {
+    // Dispara o processamento de currículos sem aguardar o resultado
+  const resultado = await axios.get(`${process.env.PROCESSING_SERVICE_URL}/comparar/llm?email=${request.query.email}`, {
+    timeout: 28000
+  })
+
+    return response.send_ok("Comparado com LLM com sucesso", { resultado: resultado.data?.detalhe })
+  } catch (err) {
+    console.error(err)
+    return response.send_badRequest("Erro ao iniciar processamento", { err })
+  }
+})
+
+CurriculoController.get("/comparar/misto", async (request: Request, response: Response) => {
+  try {
+    // Dispara o processamento de currículos sem aguardar o resultado
+  const resultado = await axios.get(`${process.env.PROCESSING_SERVICE_URL}/comparar/misto?email=${request.query.email}`, {
+    timeout: 28000
+  })
+
+    return response.send_ok("Comparado com método misto com sucesso", { resultado: resultado.data?.detalhe })
+  } catch (err) {
+    console.error(err)
+    return response.send_badRequest("Erro ao iniciar processamento", { err })
+  }
+})
+
 
 export default CurriculoController
 

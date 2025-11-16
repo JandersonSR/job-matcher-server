@@ -2,7 +2,7 @@ import mongoose from "mongoose"
 
 const curriculoSchema = new mongoose.Schema({
   conteudo: String,
-  resultado: String,
+  resultado: mongoose.Schema.Types.Mixed,
   status: String,
   email: String,
 }, { strict: false, timestamps: true })
