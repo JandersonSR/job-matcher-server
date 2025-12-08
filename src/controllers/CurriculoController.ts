@@ -37,7 +37,7 @@ CurriculoController.post("/upload", upload.single("file"), async (request: Reque
       texto = data.text
     }
 
-    if (!texto) return response.send_badRequest("Formato não suportado. Envie .docx ou .txt")
+    if (!texto) return response.send_badRequest("Formato não suportado. Envie .docx, .pdf ou .txt")
 
     console.log("Salvando currículo no banco...")
     const result = await CurriculoModel.findOneAndUpdate({ email }, {
