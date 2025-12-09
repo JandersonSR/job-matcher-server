@@ -88,11 +88,6 @@ CurriculoController.get("/status/:email", async (request: Request, response: Res
     const email = request.params.email
     console.log("Consultando status do currículo...", { email })
 
-
-    // setImmediate(() => {
-    //   processarCurriculos()
-    // })
-
     const curriculo = await CurriculoModel.findOne({ email })
     if (!curriculo) return response.send_notFound("Currículo não encontrado")
 
@@ -133,11 +128,17 @@ CurriculoController.get("/processar-curriculos", async (request: Request, respon
 CurriculoController.get("/comparar/embeddings", async (request: Request, response: Response) => {
   try {
     // Dispara o processamento de currículos sem aguardar o resultado
-  const resultado = await axios.get(`${process.env.PROCESSING_SERVICE_URL}/comparar/embeddings?email=${request.query.email}`, {
-    timeout: 28000
-  })
+    const resultado = await axios.get(`${process.env.PROCESSING_SERVICE_URL}/comparar/embeddings?email=${request.query.email}`, {
+      timeout: 28000
+    })
 
-    return response.send_ok("Comparado com embedding com sucesso", { resultado: resultado.data?.detalhe })
+    const curriculo = await CurriculoModel.findOne({ email: request.query.email })
+    if (!curriculo) return response.send_notFound("Currículo não encontrado")
+
+    return response.send_ok("Currículo comparado com embedding com sucesso", {
+      status: curriculo.status,
+      resultado: curriculo.resultado || null,
+    })
   } catch (err) {
     console.error(err)
     return response.send_badRequest("Erro ao iniciar processamento", { err })
@@ -147,11 +148,17 @@ CurriculoController.get("/comparar/embeddings", async (request: Request, respons
 CurriculoController.get("/comparar/llm", async (request: Request, response: Response) => {
   try {
     // Dispara o processamento de currículos sem aguardar o resultado
-  const resultado = await axios.get(`${process.env.PROCESSING_SERVICE_URL}/comparar/llm?email=${request.query.email}`, {
-    timeout: 28000
-  })
+    const resultado = await axios.get(`${process.env.PROCESSING_SERVICE_URL}/comparar/llm?email=${request.query.email}`, {
+      timeout: 28000
+    })
 
-    return response.send_ok("Comparado com LLM com sucesso", { resultado: resultado.data?.detalhe })
+    const curriculo = await CurriculoModel.findOne({ email: request.query.email })
+    if (!curriculo) return response.send_notFound("Currículo não encontrado")
+
+    return response.send_ok("Currículo comparado com LLM com sucesso", {
+      status: curriculo.status,
+      resultado: curriculo.resultado || null,
+    })
   } catch (err) {
     console.error(err)
     return response.send_badRequest("Erro ao iniciar processamento", { err })
@@ -161,11 +168,17 @@ CurriculoController.get("/comparar/llm", async (request: Request, response: Resp
 CurriculoController.get("/comparar/misto", async (request: Request, response: Response) => {
   try {
     // Dispara o processamento de currículos sem aguardar o resultado
-  const resultado = await axios.get(`${process.env.PROCESSING_SERVICE_URL}/comparar/misto?email=${request.query.email}`, {
-    timeout: 28000
-  })
+    const resultado = await axios.get(`${process.env.PROCESSING_SERVICE_URL}/comparar/misto?email=${request.query.email}`, {
+      timeout: 28000
+    })
 
-    return response.send_ok("Comparado com método misto com sucesso", { resultado: resultado.data?.detalhe })
+    const curriculo = await CurriculoModel.findOne({ email: request.query.email })
+    if (!curriculo) return response.send_notFound("Currículo não encontrado")
+
+    return response.send_ok("Currículo comparado com método misto com sucesso", {
+      status: curriculo.status,
+      resultado: curriculo.resultado || null,
+    })
   } catch (err) {
     console.error(err)
     return response.send_badRequest("Erro ao iniciar processamento", { err })
