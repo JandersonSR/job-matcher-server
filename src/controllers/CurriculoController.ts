@@ -47,10 +47,10 @@ CurriculoController.post("/upload", upload.single("file"), async (request: Reque
       createdAt: new Date()
     }, { upsert: true, new: true })
 
-    setImmediate(() => {
-      scrapVagas(2)
-      processarCurriculos()
-    })
+    // setImmediate(() => {
+    //   scrapVagas(2)
+    //   processarCurriculos()
+    // })
 
     return response.send_ok("Currículo salvo com sucesso", { id: result._id })
   } catch (err) {
